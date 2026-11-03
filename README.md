@@ -10,8 +10,8 @@
 
 | 영역 | 사용 기술 |
 | --- | --- |
-| 백엔드 | Java 21, Spring Boot 4.1.x, Spring Data JPA, Flyway, Spring Security, ShedLock |
-| 데이터 | PostgreSQL 17, Redis 7.4, Kafka 4.x (KRaft) |
+| 백엔드 | Java 21, Spring Boot 4.1.2, Spring Data JPA, Flyway, Spring Security, ShedLock |
+| 데이터 | PostgreSQL 17, Redis 7.4, Kafka 4.3.1 (KRaft) |
 | 프론트엔드 | Next.js (App Router), TypeScript, Tailwind CSS, TanStack Query |
 | 로컬 개발 | Docker Compose |
 | 운영 | Oracle Cloud VM 1대 + k3s (쿠버네티스) |
