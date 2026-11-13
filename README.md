@@ -99,7 +99,30 @@ cp backend/.env.example backend/.env       # 카카오 로그인 작업 시 필�
 
 > 두 칸 중 **하나에만** 넣으세요. 활성 프로필 칸에 `--spring.profiles.active=...`를 통째로 넣으면 `Profile '--spring.profiles.active=local' must start and end with a letter or digit` 오류가 납니다.
 
-**작업 디렉터리**는 `backend` 폴더여야 합니다 (`backend/.env`를 읽기 위해서). 기본값이 보통 맞습니다.
+**작업 디렉터리**는 `backend` 폴더로 설정합니다. Spring Boot는 `.env`를 자동으로 읽지 않으므로 카카오 키는 실행 구성의 환경 변수로 전달해야 합니다.
+
+### 카카오 인증 백엔드 설정 (M1)
+
+1. 카카오 개발자 콘솔에서 카카오 로그인을 활성화하고 닉네임 동의 항목을 설정합니다.
+2. Redirect URI에 `http://localhost:3000/auth/kakao/callback`을 등록합니다. 운영은 `https://{DOMAIN}/auth/kakao/callback`입니다.
+3. IntelliJ 실행 구성의 환경 변수에 `KAKAO_CLIENT_ID`(REST API 키), `KAKAO_CLIENT_SECRET`을 설정합니다. 실제 값은 저장소에 기록하지 않습니다.
+4. Java 21, Spring Boot 4.1.2로 `local,api` 프로필을 실행합니다. PostgreSQL과 Redis가 필요합니다.
+
+| API | 용도 |
+| --- | --- |
+| `POST /api/auth/kakao` | JSON `{code, redirectUri}`로 로그인. `{accessToken, user}` 반환 |
+| `POST /api/auth/refresh` | 리프레시 쿠키를 회전하고 `{accessToken}` 반환 |
+| `POST /api/auth/logout` | Bearer 인증 후 현재 리프레시 쿠키 폐기, 204 반환 |
+| `GET /api/me` | Bearer 인증으로 내 정보 조회 |
+| `PATCH /api/me` | JSON `{nickname?, phone?}`로 수정. 전화번호는 숫자 10~11자리 |
+
+액세스 토큰은 30분, 리프레시 토큰은 14일입니다. 리프레시 쿠키는 `HttpOnly; Secure; SameSite=Lax; Path=/api/auth`이며, 토큰 응답은 캐시하지 않습니다. 브라우저 요청은 프론트와 같은 오리진의 `/api`를 사용하고, 백엔드는 `Origin`을 서비스 주소와 대조합니다. 로컬에서도 Secure 속성을 유지하므로 localhost에서 확인하고, 다른 기기·호스트로 접속할 때는 HTTPS를 사용합니다.
+
+프론트 연결 시 카카오 인가 요청의 `state` 생성·검증, 로그인 복귀 경로 검증, 페이지 새로고침 시 재발급, 만료 시 자동 재발급을 구현해야 합니다. 동시 재발급은 하나만 성공하므로 프론트에서 재발급 요청을 하나로 합쳐야 합니다. 로그아웃은 리프레시 토큰을 폐기하며, 이미 발급된 액세스 토큰은 만료까지 유효하므로 프론트에서도 즉시 제거합니다.
+
+프론트 없이 수동 검증할 때는 `local,api`로 실행하고 `http://localhost:8080/api/docs/ui`에서 `POST /api/auth/kakao`를 호출할 수 있습니다. 브라우저에서 받은 새 인가 코드와 등록된 `redirectUri`를 JSON으로 입력합니다. `local` 프로필에서만 `http://localhost:{server.port}` 오리진을 추가 허용하며 기본 포트는 8080입니다. `prod` 프로필이 함께 활성화되어 있으면 이 예외를 적용하지 않습니다. 카카오 Redirect URI는 Swagger 주소가 아니라 기존 `http://localhost:3000/auth/kakao/callback`을 그대로 사용합니다.
+
+테스트는 `cd backend` 후 `./gradlew test`로 실행합니다. 카카오 HTTP 요청은 모의 서버로 검증하고, 사용자 저장·리프레시 회전·API 통합 테스트는 Testcontainers의 PostgreSQL 17과 Redis 7.4를 사용합니다. Docker가 필요합니다.
 
 ---
 
